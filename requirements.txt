@@ -1,0 +1,14 @@
+Flask
+pycryptodome
+requests
+protobuf
+PyJWT
+crypto
+Flask
+protobuf
+protobuf-decoder
+psutil
+pycryptodome
+PyJWT
+requests
+urllib3
