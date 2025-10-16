@@ -56,6 +56,11 @@ data22 = None
 isroom = False
 isroom2 = False
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Guild Chat Configuration
+chat_ip = "202.81.106.11"
+chat_port = 39698
+
 def encrypt_packet(plain_text, key, iv):
     plain_text = bytes.fromhex(plain_text)
     cipher = AES.new(key, AES.MODE_CBC, iv)
@@ -512,6 +517,8 @@ class FF_CLIENT(threading.Thread):
         self.password = password
         self.key = None
         self.iv = None
+        self.clan_id = None
+        self.clan_key = None
         self.get_tok()
 
     def parse_my_message(self, serialized_data):
@@ -1072,6 +1079,33 @@ class FF_CLIENT(threading.Thread):
                 break
     
     
+    def joinclanchat(self):
+        # Use auto-extracted values or fallback to defaults
+        clan_id = self.clan_id if self.clan_id else 3084580497
+        clan_key = self.clan_key if self.clan_key else "1hbSV8rVDrRuWhgC1SmkTg"
+        
+        fields = {
+            1: 3,
+            2: {
+                1: clan_id,  # clan id (auto-extracted)
+                2: 1,
+                4: str(clan_key),  # clan key (auto-extracted)
+            }
+        }
+        packet = create_protobuf_packet(fields)
+        packet = packet.hex()
+        header_lenth = len(encrypt_packet(packet, key, iv))//2
+        header_lenth_final = dec_to_hex(header_lenth)
+        if len(header_lenth_final) == 2:
+            final_packet = "1215000000" + header_lenth_final + self.nmnmmmmn(packet)
+        elif len(header_lenth_final) == 3:
+            final_packet = "121500000" + header_lenth_final + self.nmnmmmmn(packet)
+        elif len(header_lenth_final) == 4:
+            final_packet = "12150000" + header_lenth_final + self.nmnmmmmn(packet)
+        elif len(header_lenth_final) == 5:
+            final_packet = "1215000" + header_lenth_final + self.nmnmmmmn(packet)
+        return bytes.fromhex(final_packet)
+
     def connect(self, tok, packet, key, iv, whisper_ip, whisper_port, online_ip, online_port):
         global clients
         global socket_client
@@ -1087,14 +1121,22 @@ class FF_CLIENT(threading.Thread):
         global pleaseaccept
         global tempdata1
         global data22
+        
+        # Connect to whisper server (friend chat)
         clients = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clients.connect((whisper_ip, whisper_port))
         clients.send(bytes.fromhex(tok))
+        
+        # Start online chat thread
         thread = threading.Thread(
             target=self.sockf1, args=(tok, online_ip, online_port, "anything", key, iv)
         )
         threads.append(thread)
         thread.start()
+        
+        # Send join clan chat packet (guild messages come through same connection!)
+        clients.send(self.joinclanchat())
+        print(f"[Guild Chat] Sent join clan chat packet")
 
         while True:
             data = clients.recv(9999)
@@ -2335,6 +2377,15 @@ Hello,I am MR OPPY
                 parsed_data = json.loads(json_result)
                 print(parsed_data)
                 
+                # Auto-extract clan info for guild chat
+                if '20' in parsed_data:
+                    self.clan_id = parsed_data['20']['data']
+                    print(f"Auto-extracted Clan ID: {self.clan_id}")
+                
+                if '55' in parsed_data:
+                    self.clan_key = parsed_data['55']['data']
+                    print(f"Auto-extracted Clan Key: {self.clan_key}")
+                
                 whisper_address = parsed_data['32']['data']
                 online_address = parsed_data['14']['data']
                 online_ip = online_address[:len(online_address) - 6]
@@ -2483,7 +2534,7 @@ for thread in threads:
     
 if __name__ == "__main__":
     try:
-        client_thread = FF_CLIENT(id="3900968880", password="Non lo so, abbi pazienza4782FEBA4C05142F8BA3EAB711B57893A3233ACBBE8D19B3BA93D902066D479B")
+        client_thread = FF_CLIENT(id="4228515193", password="0602E1AE0D6071607652CF6BB5217481B896B07201D9F3FFABB143100E6D192F")
         client_thread.start()
     except Exception as e:
         logging.error(f"Error occurred: {e}")
